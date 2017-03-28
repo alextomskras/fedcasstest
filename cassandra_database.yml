@@ -1,0 +1,7 @@
+- hosts: cassandra_servers
+  user: root
+  
+  roles:
+    - cassandra_common
+    - cassandra_database
+    

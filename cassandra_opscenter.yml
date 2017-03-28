@@ -1,0 +1,14 @@
+- hosts: opscenter_server
+  user: root
+  
+  roles:
+    - cassandra_common
+    - cassandra_opscenter
+ 
+- hosts: cassandra_servers
+  user: root
+ 
+  roles:
+    - cassandra_common
+    - cassandra_agent
+    

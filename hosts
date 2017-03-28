@@ -1,0 +1,7 @@
+[cassandra_servers]
+app1
+app2
+
+[opscenter_server]
+app4
+
