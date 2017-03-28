@@ -1,0 +1,154 @@
+    ##### install file names and directories #####
+    root_directory:             "/u01"
+     
+    # Directory where the software to be installed is located
+    software_directory:         "/mnt/hgfs/vmware_temp"
+        
+    # Name of JVM file that is used in the installation
+    jvm_file_name:              "jdk-8u65-linux-x64.tar.gz"
+        
+    # Name of the Cassandra file that is used in the installation
+    cassandra_file_name:        "dsc-cassandra-2.2.3-bin.tar.gz"
+     
+    # Base directory
+    base_directory:             "{{ root_directory }}/app/apache"
+     
+    # Directory where Cassandra will be installed (this is dependent on the used tar)
+    cassandra_root_directory:   "{{ base_directory }}/dsc-cassandra-2.2.3"
+     
+    # Directory where the JVM will be installed (this is dependent on the used tar)
+    java_install_dir:          "{{ base_directory }}/jdk1.8.0_65"
+    # Java Home will be used to rename java_install_dir
+    java_home:                 "{{ base_directory }}/jdk8"
+     
+    # files
+    jvm_installer:              "{{ software_directory }}/{{ jvm_file_name }}"
+    cassandra_installer:        "{{ software_directory }}/{{ cassandra_file_name }}"
+    java_security:              "{{ java_home }}/jre/lib/security/java.security"
+    cassandra_env_sh:           "{{ cassandra_root_directory }}/conf/cassandra-env.sh"
+    cassandra_yaml:             "{{ cassandra_root_directory }}/conf/cassandra.yaml"
+    cassandra_in_sh:            "{{ cassandra_root_directory }}/bin/cassandra.in.sh"
+    cassandra_systemd:          "/etc/systemd/system/cassandra-database.service"
+     
+     
+    ##### OS settings #####
+    # number of open files
+    number_of_open_files:              8192
+     
+    # memory that will be used for huge pages
+    memory_to_reserve_in_mega_bytes:   256
+    number_of_huge_pages:              "{{ memory_to_reserve_in_mega_bytes // 2 }}"
+    mem_lock:                          "{{ 2048 * (memory_to_reserve_in_mega_bytes // 2) }}"
+     
+    # User and Group under which the software needs to be installed
+    cassandra_install_user:            "duke"
+    cassandra_install_password:        "$6$y718uwhsay612wyq$jnQ8mm4TVWKnEr3NGFhFHh09rE4IyKsdyGTg3q0unKzeb7WvvqnoR6BflkmIEvOctoM0mQ7xXoCqd55dDoZf/0"
+    cassandra_install_group:           "javainstall"
+    cassandra_install_group_id:        "1000"
+     
+     
+    ##### JVM parameters conf/cassandra-env.sh #####
+    heap_size:                         "1024m"
+    pause_time_goal_millis:            200
+    jmx_port:                          7199
+    server_name:                       "cassandra"
+     
+    # heap size
+    cassandra_server_mem_args:         "-Xms{{ heap_size }} -Xmx{{ heap_size }}"
+     
+    # garbage collector settings
+    throughput_garbage_collector_args: "-XX:NewRatio=3 -XX:SurvivorRatio=128 -XX:MaxTenuringThreshold=0 -XX:+UseParallelGC -XX:MaxGCPauseMillis={{ pause_time_goal_millis }} -XX:GCTimeRatio=19 -XX:+UseParallelOldGC"
+    pausetime_garbage_collector_args:  "-XX:+UseG1GC -XX:MaxGCPauseMillis={{ pause_time_goal_millis }}"
+     
+    # extra options
+    extra_options:                     "-XX:StringTableSize=1000003 -Djava.net.preferIPv4Stack=true"
+     
+    # large pages settings
+    large_pages_args:                  "-XX:LargePageSizeInBytes=2048k -XX:+UseLargePages"
+     
+    # monitoring settings
+    flight_recorder_monitoring_args:   "-XX:+UnlockCommercialFeatures -XX:+FlightRecorder -Dname={{ server_name }}"
+    cassandra_monitoring_args:         "-Dcom.sun.management.jmxremote.port={{ jmx_port }} -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
+    garbage_collector_monitoring_args: "-verbosegc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -Xloggc:/tmp/{{ server_name }}.out -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=5000K"
+    compiler_monitoring_args:          "-XX:+PrintCompilation -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining"
+     
+    # combine jvm options
+    jvm_options:                       "{{ cassandra_server_mem_args }} {{ pausetime_garbage_collector_args }} {{ extra_options }} {{ flight_recorder_monitoring_args }} {{ cassandra_monitoring_args }}"
+     
+    # security settings
+    securerandom_source:               "file:/dev/./urandom"
+     
+     
+    ##### cassandra parameters conf/cassandra.yaml #####
+    # the name of the cluster
+    cluster_name:          "test_cluster"
+     
+    # the number of tokens randomly assigned to the node on the ring
+    num_tokens:            256
+     
+    # address to bind to and tell other Cassandra nodes to connect to
+    listen_address:        "{{ ansible_fqdn }}"
+     
+    # address to bind the Thrift RPC service and native transport server to
+    rpc_address:           "0.0.0.0"
+     
+    # if rpc_address is set to 0.0.0.0, broadcast_rpc_address must be set to a value other than 0.0.0.0
+    broadcast_rpc_address: "{{ ansible_fqdn }}"
+     
+    # comma-delimited list of hosts that are deemed contact points (this list is used to find nodes and learn the topology of the ring)
+    seed_addresses:        "app_1,app_2"
+     
+    # endpoint snitch, the snitch has two functions:
+    # - teach Cassandra about the network topology to route requests efficiently
+    # - allow Cassandra to spread replicas around the cluster to avoid correlated failures.
+    endpoint_snitch:       "SimpleSnitch"
+     
+    # storage port
+    storage_port:          7080
+     
+    # ssl storage port
+    ssl_storage_port:      7443
+     
+    # native transport server port
+    native_transport_port: 9042
+     
+    # port for Thrift to listen for clients on
+    rpc_port:              9160
+     
+     
+    ##### Cassandra queries #####
+    query_execution_host:  "app_1"
+    query_execution_port:  "{{ native_transport_port }}"
+    keyspace_query:        "CREATE KEYSPACE IF NOT EXISTS test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 2};"
+    table_query:           "CREATE TABLE IF NOT EXISTS test.persons (  sofinummer int PRIMARY KEY , naam text ) WITH compression = {'sstable_compression': 'LZ4Compressor' } AND compaction = {'class': 'LeveledCompactionStrategy'};"
+     
+     
+    ##### OpsCenter parameters #####
+    # Name of the OpsCenter file that is used in the installation
+    opscenter_file_name:                "opscenter-5.2.2.tar.gz"
+    # Name of the Agent file that is used in the installation
+    agent_file_name:                    "datastax-agent-5.2.2.tar.gz"
+     
+    # files
+    opscenter_installer:                "{{ software_directory }}/{{ opscenter_file_name }}"
+    agent_installer:                    "{{ software_directory }}/{{ agent_file_name }}"
+    opscenter_systemd:                  "/etc/systemd/system/opscenter.service"
+    agent_systemd:                      "/etc/systemd/system/datastax-agent.service"
+     
+    # Directory where OpsCenter will be installed (this is dependent on the used tar)
+    opscenter_root_dir:                 "{{ base_directory }}/opscenter-5.2.2"
+    # Directory where the Agent will be installed (this is dependent on the used tar)
+    agent_root_dir:                     "{{ base_directory }}/datastax-agent-5.2.2"
+     
+    opscenter_webserver_port:           8888
+    opscenter_webserver_listen_address: "app_4"
+     
+    # the port used by OpsCenter for incoming stomp communication
+    stomp_port:                         61620
+     
+    # the interface used by OpsCenter for incoming stomp traffic from the agents
+    stomp_listen_address:               "app_4"
+     
+    # the port used by agents for HTTP traffic
+    agent_http_port:                    61621
+    

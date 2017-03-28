@@ -1,0 +1,56 @@
+ 
+- name: create root directory
+  file:
+    path={{ root_directory }}
+    state=directory
+    owner="{{ cassandra_install_user }}"
+    group="{{ cassandra_install_group }}"
+    mode=0755
+    
+- name: create directories
+  file:
+    path="{{ item }}"
+    state=directory
+    owner="{{ cassandra_install_user }}"
+    group="{{ cassandra_install_group }}"
+    mode=0755
+  with_items:
+    - "{{ base_directory }}"
+    - "{{ opscenter_root_dir }}/conf/clusters"
+    
+- name: install opscenter
+  shell: /bin/su - "{{ cassandra_install_user }}" -c "/bin/tar xzf {{ opscenter_installer }} -C {{ base_directory }}"
+    creates="{{ opscenter_root_dir }}/bin/opscenter"
+  
+- name: edit conf/opscenterd.conf
+  template:
+    src=roles/cassandra_common/templates/opscenter/opscenterd_conf.j2 
+    dest="{{ opscenter_root_dir }}/conf/opscenterd.conf"
+    owner="{{ cassandra_install_user }}"
+    group="{{ cassandra_install_group }}"
+    mode=0644
+    
+- name: create conf/clusters/cluster_name.conf
+  template:
+    src=roles/cassandra_common/templates/opscenter/cluster_name_conf.j2 
+    dest="{{ opscenter_root_dir }}/conf/clusters/{{ cluster_name }}.conf"
+    owner="{{ cassandra_install_user }}"
+    group="{{ cassandra_install_group }}"
+    mode=0644
+    
+- name: create opscenter systemd script
+  template:
+    src=roles/cassandra_common/templates/opscenter/opscenter_service.j2 
+    dest="{{ opscenter_systemd }}"
+    owner='root'
+    group='root'
+    mode=0644
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7'
+    
+- name: enable and start opscenter service
+  service:
+    name=opscenter
+    state=started
+    enabled=yes
+  register: opscenter_started  
+  

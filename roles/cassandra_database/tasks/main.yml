@@ -1,0 +1,40 @@
+- name: create root directory
+  file:
+    path={{ root_directory }}
+    state=directory
+    owner="{{ cassandra_install_user }}"
+    group="{{ cassandra_install_group }}"
+    mode=0755
+    
+- name: create directories
+  file:
+    path="{{ item }}"
+    state=directory
+    owner="{{ cassandra_install_user }}"
+    group="{{ cassandra_install_group }}"
+    mode=0755
+  with_items:
+    - "{{ base_directory }}"
+    
+- name: install java virtual machine
+  shell: /bin/su - "{{ cassandra_install_user }}" -c "/bin/tar xzf {{ jvm_installer }} -C {{ base_directory }}"
+    creates="{{ java_security }}"
+  
+  
+- name: set entropy gathering device
+  replace:
+    dest="{{ java_security }}"
+    regexp='^securerandom\.source=file:/dev/random'
+    replace="securerandom.source={{ securerandom_source }}"
+  
+- name: install cassandra
+  shell: /bin/su - "{{ cassandra_install_user }}" -c "/bin/tar xzf {{ cassandra_installer }} -C {{ base_directory }}"
+    creates="{{ cassandra_yaml }}"
+      
+- name: enable and start cassandra-database service
+  service:
+    name=cassandra-database
+    state=started
+    enabled=yes
+  register: cassandra_database_started
+  

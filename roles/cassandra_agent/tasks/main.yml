@@ -1,0 +1,47 @@
+ 
+- name: create directories
+  file:
+    path="{{ item }}"
+    state=directory
+    owner="{{ cassandra_install_user }}"
+    group="{{ cassandra_install_group }}"
+    mode=0755
+  with_items:
+    - "{{ base_directory }}"
+ 
+- name: install cassandra agent
+  shell: /bin/su - "{{ cassandra_install_user }}" -c "/bin/tar xzf {{ agent_installer }} -C {{ base_directory }}"
+    creates="{{ agent_root_dir }}/bin/datastax-agent"
+    
+- name: edit bin/find-java
+  template:
+    src=roles/cassandra_common/templates/opscenter/find-java.j2 
+    dest="{{ agent_root_dir }}/bin/find-java"
+    owner="{{ cassandra_install_user }}"
+    group="{{ cassandra_install_group }}"
+    mode=0744
+    
+- name: create conf/address.yaml
+  template:
+    src=roles/cassandra_common/templates/opscenter/address_yaml.j2
+    dest="{{ agent_root_dir }}/conf/address.yaml"
+    owner="{{ cassandra_install_user }}"
+    group="{{ cassandra_install_group }}"
+    mode=0644
+    
+- name: create datastax-agent systemd script
+  template:
+    src=roles/cassandra_common/templates/opscenter/datastax_agent_service.j2 
+    dest="{{ agent_systemd }}"
+    owner='root'
+    group='root'
+    mode=0644
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7'
+  
+- name: enable and start datastax-agent service
+  service:
+    name=datastax-agent
+    state=started
+    enabled=yes
+  register: datastax_agent_started
+  

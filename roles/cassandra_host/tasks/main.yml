@@ -1,0 +1,58 @@
+ 
+- name: disable selinux
+  selinux:
+    policy=targeted
+    state=disabled
+  notify:
+    - restart server
+    - wait for server to restart
+ 
+- name: disable firewalld
+  service:
+    name=firewalld
+    state=stopped
+    enabled=no
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7'
+  
+- name: install packages linux 7
+  yum:
+    name={{ item }}
+    state=present
+  with_items:
+    - binutils
+    - compat-libcap1
+    - compat-libstdc++-33
+    - dos2unix
+    - fuse
+    - gcc
+    - gcc-c++
+    - glibc
+    - glibc-devel
+    - kernel-devel
+    - libaio
+    - libaio-devel
+    - libgcc
+    - libstdc++
+    - libstdc++-devel
+    - lsof
+    - ksh
+    - make
+    - net-tools
+    - perl
+    - strace
+    - sysstat
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7'
+  
+- name: create group
+  group:
+    name={{ cassandra_install_group }}
+    gid={{ cassandra_install_group_id }}
+    state=present
+ 
+- name: create user
+  user:
+    name={{ cassandra_install_user }}
+    state=present
+    createhome=yes
+    group={{ cassandra_install_group_id }}
+    password={{ cassandra_install_password }}

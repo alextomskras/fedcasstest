@@ -1,0 +1,16 @@
+ 
+- name: wait for native_transport_port
+  wait_for:
+    host="{{ inventory_hostname }}"
+    port="{{ native_transport_port }}"
+    state=started
+    timeout=300
+ 
+- name: create keyspace
+  shell: /bin/su - "{{ cassandra_install_user }}" -c "{{ cassandra_root_directory }}/bin/cqlsh --execute=\"{{ keyspace_query }}\" {{ query_execution_host }} {{ query_execution_port }}"
+  when: query_execution_host == inventory_hostname
+  
+- name: create table
+  shell: /bin/su - "{{ cassandra_install_user }}" -c "{{ cassandra_root_directory }}/bin/cqlsh --execute=\"{{ table_query }}\" {{ query_execution_host }} {{ query_execution_port }}"
+  when: query_execution_host == inventory_hostname
+  
